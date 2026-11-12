@@ -23,6 +23,8 @@ namespace CustomReels
         private const string ProjectorPath = "Sector_RingInterior/Sector_Zone1/Sector_ProjectionHouse_Zone1/Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring";
         // NH can schedule two successive 30-update spawn/velocity corrections.
         private const int SettleFrames = 90;
+        private const float SpawnBackoffMeters = 1.5f;
+        private const float SpawnLeftOffsetMeters = 1.5f;
         private INewHorizons _nh;
         private Harmony _harmony;
         private SpawnPoint _spawn;
@@ -89,6 +91,9 @@ namespace CustomReels
                 var forward = Vector3.ProjectOnPlane(anchor.forward, projector.transform.up);
                 if (forward.sqrMagnitude < 0.001f) forward = projector.transform.forward;
                 point.rotation = Quaternion.LookRotation(forward, projector.transform.up);
+                // Move diagonally in the viewing anchor's horizontal plane.
+                point.position -= point.right * SpawnLeftOffsetMeters
+                    + forward.normalized * SpawnBackoffMeters;
                 _spawn._attachedBody = _ring.GetComponent<OWRigidbody>();
                 if (_spawn._attachedBody == null)
                 {
@@ -111,7 +116,7 @@ namespace CustomReels
                 _frames = 0;
                 _floorFound = false;
                 _warped = false;
-                Log($"Preparing cinema: ringLocal={_ring.InverseTransformPoint(point.position):F2}, streamingGroups={_groups.Length}");
+                Log($"Preparing cinema: ringLocal={_ring.InverseTransformPoint(point.position):F2}, backoff={SpawnBackoffMeters:F1}m, leftOffset={SpawnLeftOffsetMeters:F1}m, streamingGroups={_groups.Length}");
             }
             catch (Exception error)
             {
