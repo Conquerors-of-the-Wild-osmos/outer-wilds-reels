@@ -33,6 +33,7 @@ namespace CustomReels
         private OWTriggerVolume[] _candidateVolumes = Array.Empty<OWTriggerVolume>();
         private OWTriggerVolume[] _sectorVolumes = Array.Empty<OWTriggerVolume>();
         private OWTriggerVolume _interiorAtmosphere;
+        private VillageMusicVolume[] _villageMusic = Array.Empty<VillageMusicVolume>();
         private readonly HashSet<GameObject> _enteredAtmosphereDetectors = new HashSet<GameObject>();
         private readonly HashSet<OWTriggerVolume> _enteredVolumes = new HashSet<OWTriggerVolume>();
         private readonly HashSet<Shape> _unsupportedPointChecks = new HashSet<Shape>();
@@ -106,6 +107,12 @@ namespace CustomReels
                     return;
                 }
                 _groups = _ring.GetComponentsInChildren<StreamingGroup>(true);
+                var timberHearth = GameObject.Find("TimberHearth_Body");
+                _villageMusic = timberHearth != null
+                    ? timberHearth.GetComponentsInChildren<VillageMusicVolume>(true)
+                    : Array.Empty<VillageMusicVolume>();
+                if (_villageMusic.Length == 0)
+                    Log("Timber Hearth VillageMusicVolume not found; music cleanup unavailable.", MessageType.Warning);
                 _candidateVolumes = _ring.GetComponentsInChildren<OWTriggerVolume>();
                 // This native volume uses airlock entryways, so a Shape.PointInside
                 // query alone cannot register a player teleported into the interior.
@@ -183,6 +190,7 @@ namespace CustomReels
                         return;
                     }
                     RegisterAtmosphereDetectors(player);
+                    LeaveVillageMusic(player);
                     var ground = controller?._groundCollider;
                     var stable = controller != null && controller.IsGrounded()
                         && ground != null && ground.transform.IsChildOf(_ring)
@@ -201,6 +209,7 @@ namespace CustomReels
                     return;
                 }
                 PlacePlayer(player);
+                LeaveVillageMusic(player);
                 RegisterVolumes(detector);
                 _frames++;
                 if (_frames >= SettleFrames && Time.realtimeSinceStartup >= _nextFloorCheck
@@ -281,6 +290,48 @@ namespace CustomReels
         private float RelativeSpeed(OWRigidbody player)
             => (player.GetVelocity() - _spawn._attachedBody.GetVelocity()
                 - _spawn._attachedBody.GetPointTangentialVelocity(player.GetPosition())).magnitude;
+
+        private void LeaveVillageMusic(OWRigidbody player)
+        {
+            // Startup can register the camera in the village even when NH moves
+            // the body elsewhere. Clear both trigger membership and audio priority
+            // tracking while settling, including a dormant daytime music layer.
+            var audioDetectors = player.GetComponentsInChildren<AudioDetector>(true);
+            var objects = audioDetectors.Select(d => d.gameObject)
+                .Concat(new[] { Locator.GetPlayerDetector() }).Where(o => o != null).Distinct().ToArray();
+            foreach (var volume in _villageMusic)
+            {
+                if (volume == null) continue;
+                var changed = false;
+                var triggers = new[] { volume._triggerVolumeOverride, volume.GetOWTriggerVolume() }
+                    .Where(v => v != null).Distinct();
+                foreach (var trigger in triggers)
+                    foreach (var obj in objects)
+                        if (trigger.IsTrackingObject(obj))
+                        {
+                            trigger.RemoveObjectFromVolume(obj);
+                            changed = true;
+                        }
+                foreach (var detector in audioDetectors)
+                {
+                    // The trigger may already have lost the object during warp,
+                    // while the detector still retains an inactive priority layer.
+                    if ((detector._activeVolumes != null && detector._activeVolumes.Contains(volume))
+                        || (detector._trackedLayers != null
+                            && detector._trackedLayers.Values.Any(layer => layer.volumes.Contains(volume))))
+                    {
+                        detector.RemoveVolume(volume);
+                        changed = true;
+                    }
+                }
+                if (changed || volume.IsActive() || (volume._owAudioSrc != null && volume._owAudioSrc.isPlaying))
+                {
+                    volume.Deactivate();
+                    volume._owAudioSrc?.Stop();
+                    Log($"Village music detached: {volume.name}.");
+                }
+            }
+        }
 
         private void RegisterVolumes(GameObject detector)
         {
@@ -425,6 +476,7 @@ namespace CustomReels
             _nextFloorCheck = 0;
             RemoveAtmosphereDetectors();
             _interiorAtmosphere = null;
+            _villageMusic = Array.Empty<VillageMusicVolume>();
             ReleaseStreaming();
             _enteredVolumes.Clear();
             _spawn = null;
