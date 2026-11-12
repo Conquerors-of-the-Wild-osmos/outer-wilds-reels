@@ -32,6 +32,8 @@ namespace CustomReels
         private StreamingGroup[] _groups = Array.Empty<StreamingGroup>();
         private OWTriggerVolume[] _candidateVolumes = Array.Empty<OWTriggerVolume>();
         private OWTriggerVolume[] _sectorVolumes = Array.Empty<OWTriggerVolume>();
+        private OWTriggerVolume _interiorAtmosphere;
+        private readonly HashSet<GameObject> _enteredAtmosphereDetectors = new HashSet<GameObject>();
         private readonly HashSet<OWTriggerVolume> _enteredVolumes = new HashSet<OWTriggerVolume>();
         private readonly HashSet<Shape> _unsupportedPointChecks = new HashSet<Shape>();
         private bool _preparing;
@@ -105,6 +107,12 @@ namespace CustomReels
                 }
                 _groups = _ring.GetComponentsInChildren<StreamingGroup>(true);
                 _candidateVolumes = _ring.GetComponentsInChildren<OWTriggerVolume>();
+                // This native volume uses airlock entryways, so a Shape.PointInside
+                // query alone cannot register a player teleported into the interior.
+                _interiorAtmosphere = _ring.GetComponentsInChildren<OWTriggerVolume>(true)
+                    .FirstOrDefault(v => v.name == "FluidOxygenVolume");
+                if (_interiorAtmosphere == null)
+                    Log("Ring interior FluidOxygenVolume not found; oxygen registration unavailable.", MessageType.Warning);
                 _sectorVolumes = projector.GetComponentsInParent<Sector>()
                     .Select(s => s.GetTriggerVolume()).Where(v => v != null).ToArray();
                 foreach (var group in _groups)
@@ -136,7 +144,10 @@ namespace CustomReels
                     _reportAt = 0;
                     var player = Locator.GetPlayerBody();
                     if (player != null && _spawn != null)
+                    {
                         Log($"After spawn: distanceFromTarget={Vector3.Distance(player.GetPosition(), _spawn.transform.position):F2}m, grounded={player.GetComponent<PlayerCharacterController>()?.IsGrounded()}, relativeSpeed={RelativeSpeed(player):F2}m/s");
+                        LogAtmosphereState(player);
+                    }
                 }
                 return;
             }
@@ -171,6 +182,7 @@ namespace CustomReels
                         Fallback($"Landing failed: distance={distance:F2}m, relativeSpeed={RelativeSpeed(player):F2}m/s.");
                         return;
                     }
+                    RegisterAtmosphereDetectors(player);
                     var ground = controller?._groundCollider;
                     var stable = controller != null && controller.IsGrounded()
                         && ground != null && ground.transform.IsChildOf(_ring)
@@ -180,6 +192,7 @@ namespace CustomReels
                     else if (Time.realtimeSinceStartup - _groundedSince >= 1f)
                     {
                         Log($"Cinema spawn ready: grounded=true, ground={ground.name}, volumes={_spawn._triggerVolumes.Length}, elapsed={Time.realtimeSinceStartup - _started:F2}s");
+                        LogAtmosphereState(player);
                         _preparing = false;
                         // Keep our streaming request until scene cleanup/fallback.
                         // Do not unload the collision we just used to verify landing.
@@ -275,7 +288,9 @@ namespace CustomReels
             // the containing volumes enables sectors, collision and atmosphere.
             var volumes = _candidateVolumes
                 .Where(ContainsSpawnPoint)
-                .Concat(_sectorVolumes.Where(v => v != null)).Distinct().ToArray();
+                .Concat(_sectorVolumes.Where(v => v != null))
+                .Concat(new[] { _interiorAtmosphere }.Where(v => v != null && v.isActiveAndEnabled))
+                .Distinct().ToArray();
             _spawn._triggerVolumes = volumes;
             foreach (var previous in _enteredVolumes.Where(v => v != null && !volumes.Contains(v)).ToArray())
             {
@@ -288,6 +303,39 @@ namespace CustomReels
                 volume.AddObjectToVolume(detector);
                 _enteredVolumes.Add(volume);
             }
+            RegisterAtmosphereDetectors(Locator.GetPlayerBody());
+        }
+
+        private void RegisterAtmosphereDetectors(OWRigidbody player)
+        {
+            if (_interiorAtmosphere == null || !_interiorAtmosphere.isActiveAndEnabled || player == null) return;
+            var resources = player.GetComponent<PlayerResources>();
+            if (resources == null) return;
+            // Register the actual oxygen/body/camera detectors through the native
+            // trigger. Its normal airlock exit events will remove them again.
+            var detectors = new Detector[] { resources._oxygenDetector, resources._fluidDetector, resources._cameraFluidDetector };
+            foreach (var obj in detectors.Where(d => d != null).Select(d => d.gameObject).Distinct())
+            {
+                if (_interiorAtmosphere.IsTrackingObject(obj)) continue;
+                _interiorAtmosphere.AddObjectToVolume(obj);
+                _enteredAtmosphereDetectors.Add(obj);
+            }
+        }
+
+        private void LogAtmosphereState(OWRigidbody player)
+        {
+            var resources = player.GetComponent<PlayerResources>();
+            if (resources == null) return;
+            Log($"Atmosphere: volume={_interiorAtmosphere?.name ?? "missing"}, oxygenPresent={resources.IsOxygenPresent()}, oxygen={resources.GetOxygenFraction():P0}, refilling={resources.IsRefillingOxygen()}");
+        }
+
+        private void RemoveAtmosphereDetectors()
+        {
+            if (_interiorAtmosphere != null)
+                foreach (var obj in _enteredAtmosphereDetectors)
+                    if (obj != null && _interiorAtmosphere.IsTrackingObject(obj))
+                        _interiorAtmosphere.RemoveObjectFromVolume(obj);
+            _enteredAtmosphereDetectors.Clear();
         }
 
         private bool ContainsSpawnPoint(OWTriggerVolume volume)
@@ -338,6 +386,7 @@ namespace CustomReels
                 if (volume != null && detector != null && volume.IsTrackingObject(detector))
                     volume.RemoveObjectFromVolume(detector);
             _enteredVolumes.Clear();
+            RemoveAtmosphereDetectors();
             ReleaseStreaming();
             var vanilla = FindObjectsOfType<SpawnPoint>().FirstOrDefault(s =>
                 s != _spawn && s.GetSpawnLocation() == SpawnLocation.TimberHearth && !s.IsShipSpawn());
@@ -374,6 +423,8 @@ namespace CustomReels
             _testingLanding = false;
             _groundedSince = 0;
             _nextFloorCheck = 0;
+            RemoveAtmosphereDetectors();
+            _interiorAtmosphere = null;
             ReleaseStreaming();
             _enteredVolumes.Clear();
             _spawn = null;
