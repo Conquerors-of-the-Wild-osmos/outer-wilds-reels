@@ -25,7 +25,7 @@
     "signals": [
       {
         "rename": "CustomReels_CinemaSignal",
-        "name": "Custom Reels Cinema",
+        "name": "Custom Reels Cinema - Timber Hearth",
         "frequency": "Traveler",
         "audio": "OW_NM_WhiteHoleAmbienceL",
         "parentPath": "Sector_TH/CustomReels_ProjectionHouse/Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring",
@@ -48,10 +48,17 @@
         "sectorPath": "auto",
         "position": {"x": -1.3, "y": -1, "z": 0.8},
         "rotation": {"x": 15.0133, "y": 63.1091, "z": 13.3932},
-        "displaySlides": [0, 1, 0, 1, 0, 1, 0],
+        "displaySlides": [0, 1, 2, 0, 1, 2, 0],
         "slides": [
           {"imagePath": "img/1.jpg"},
-          {"imagePath": "img/2.jpg"}
+          {"imagePath": "img/2.jpg"},
+          {
+            "imagePath": "img/3-burned.png",
+            "backdropAudio": "Reel_Backdrop_Burnt",
+            "backdropFadeTime": 0.5,
+            "beatAudio": "Reel_Burning_Beat_A",
+            "beatDelay": 0
+          }
         ]
       }
     ]

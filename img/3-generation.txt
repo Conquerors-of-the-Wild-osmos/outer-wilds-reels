@@ -1,0 +1,13 @@
+Generated with the built-in image_gen tool, then exported at 1024x1024.
+3-source.png is the clean reference; 3-burned.png is slide 3 in the mod.
+Burn damage is baked into the PNG. It is not a native game shader.
+Only 3-burned.png is included in the installable ZIP.
+
+Original generation prompt:
+Use case: stylized-concept. Asset type: a square test slide image for an Outer Wilds slide reel mod. Generate exactly 1024 by 1024 pixels. A single curious orange cat sitting beside a glowing green camping lantern inside a simple wooden observatory, with stars visible through a window. Warm painterly illustration, clear bold shapes, varied light and dark areas for testing projected image contrast. Full-bleed square composition with useful detail extending to all four edges. No text, no border, no vignette, no circular mask, no burned edges, no film damage: the game will apply its own burned-slide shader later. Opaque background.
+
+The original prompt anticipated a game shader. Research found no per-slide
+burn-filter setting in New Horizons, so a separate image edit was used instead.
+
+Final edit prompt:
+Use case: precise-object-edit. Edit this test slide, preserving the cat, green lantern, observatory, composition and all undamaged image detail. Apply a static burned photographic slide treatment: irregular charred black patches and amber-brown heat damage mainly along the outer edges, a few small irregular melted holes, fine scratches and faded emulsion. Keep the cat's face and most of the lantern clearly readable; roughly 75 percent of the scene stays visible. Damage is on the film surface, not a physical fire in the scene. It must not look like a smooth circular vignette. No flames on the cat, no text, no frame. Opaque full-bleed square PNG, exactly 1024 x 1024 pixels.
