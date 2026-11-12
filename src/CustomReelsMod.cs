@@ -37,6 +37,9 @@ namespace CustomReels
         private bool _preparing;
         private bool _floorFound;
         private bool _warped;
+        private bool _testingLanding;
+        private float _groundedSince;
+        private float _nextFloorCheck;
         private int _frames;
         private float _started;
         private float _reportAt;
@@ -133,7 +136,7 @@ namespace CustomReels
                     _reportAt = 0;
                     var player = Locator.GetPlayerBody();
                     if (player != null && _spawn != null)
-                        Log($"After spawn: distanceFromTarget={Vector3.Distance(player.GetPosition(), _spawn.transform.position):F2}m");
+                        Log($"After spawn: distanceFromTarget={Vector3.Distance(player.GetPosition(), _spawn.transform.position):F2}m, grounded={player.GetComponent<PlayerCharacterController>()?.IsGrounded()}, relativeSpeed={RelativeSpeed(player):F2}m/s");
                 }
                 return;
             }
@@ -152,28 +155,54 @@ namespace CustomReels
                         Fallback("Player body/detector did not become available.");
                     return;
                 }
+                if (Time.realtimeSinceStartup - _started > 30f)
+                {
+                    Fallback($"Timed out: floorFound={_floorFound}, landing={_testingLanding}, volumes={_spawn._triggerVolumes.Length}.");
+                    return;
+                }
+                if (_testingLanding)
+                {
+                    // Let physics run without teleporting or resetting velocity.
+                    // A ray hit alone does not prove that the player can stand here.
+                    var controller = player.GetComponent<PlayerCharacterController>();
+                    var distance = Vector3.Distance(player.GetPosition(), _spawn.transform.position);
+                    if (distance > 6f)
+                    {
+                        Fallback($"Landing failed: distance={distance:F2}m, relativeSpeed={RelativeSpeed(player):F2}m/s.");
+                        return;
+                    }
+                    var ground = controller?._groundCollider;
+                    var stable = controller != null && controller.IsGrounded()
+                        && ground != null && ground.transform.IsChildOf(_ring)
+                        && RelativeSpeed(player) < 1f;
+                    if (!stable) _groundedSince = 0;
+                    else if (_groundedSince == 0) _groundedSince = Time.realtimeSinceStartup;
+                    else if (Time.realtimeSinceStartup - _groundedSince >= 1f)
+                    {
+                        Log($"Cinema spawn ready: grounded=true, ground={ground.name}, volumes={_spawn._triggerVolumes.Length}, elapsed={Time.realtimeSinceStartup - _started:F2}s");
+                        _preparing = false;
+                        // Keep our streaming request until scene cleanup/fallback.
+                        // Do not unload the collision we just used to verify landing.
+                        _reportAt = Time.realtimeSinceStartup + 2f;
+                    }
+                    return;
+                }
                 PlacePlayer(player);
                 RegisterVolumes(detector);
-                if (!_floorFound && TryFindFloor(out var floor))
-                {
-                    // SpawnPoint's player capsule extends one metre below its centre.
-                    _spawn.transform.position = floor.point + _spawn.transform.up * 1.1f;
-                    _floorFound = true;
-                    PlacePlayer(player);
-                    RegisterVolumes(detector);
-                    Log($"Floor found: {floor.collider.name}, ringLocal={_ring.InverseTransformPoint(floor.point):F2}");
-                }
                 _frames++;
-                if (_floorFound && _frames >= SettleFrames && _groups.All(g => g == null || g.AreRequiredAssetsLoaded()))
+                if (_frames >= SettleFrames && Time.realtimeSinceStartup >= _nextFloorCheck
+                    && _groups.All(g => g == null || g.AreRequiredAssetsLoaded()))
                 {
-                    Log($"Cinema spawn ready: volumes={_spawn._triggerVolumes.Length}, elapsed={Time.realtimeSinceStartup - _started:F2}s");
-                    _preparing = false;
-                    ReleaseStreaming();
-                    _reportAt = Time.realtimeSinceStartup + 2f;
-                }
-                else if (Time.realtimeSinceStartup - _started > 30f)
-                {
-                    Fallback($"Timed out: floorFound={_floorFound}, volumes={_spawn._triggerVolumes.Length}.");
+                    _nextFloorCheck = Time.realtimeSinceStartup + 0.5f;
+                    if (TryFindFloor(player, out var floor, out var position))
+                    {
+                        _spawn.transform.position = position;
+                        _floorFound = true;
+                        PlacePlayer(player);
+                        RegisterVolumes(detector);
+                        _testingLanding = true;
+                        Log($"Floor found: {floor.collider.name}, ringLocal={_ring.InverseTransformPoint(floor.point):F2}, playerLocal={_ring.InverseTransformPoint(position):F2}; checking physical landing.");
+                    }
                 }
             }
             catch (Exception error)
@@ -182,21 +211,63 @@ namespace CustomReels
             }
         }
 
-        private bool TryFindFloor(out RaycastHit floor)
+        private bool TryFindFloor(OWRigidbody player, out RaycastHit floor, out Vector3 position)
         {
             var point = _spawn.transform;
-            foreach (var hit in Physics.RaycastAll(point.position + point.up * 0.5f,
-                         -point.up, 6f, ~0, QueryTriggerInteraction.Ignore).OrderBy(h => h.distance))
+            var capsule = player.GetComponent<PlayerCharacterController>()?._bodyCollider as CapsuleCollider;
+            if (capsule == null)
+                throw new InvalidOperationException("Player body capsule not found; cannot validate spawn clearance.");
+            // Prefer the requested back/left offset, then try nearby positions.
+            var offsets = from x in Enumerable.Range(-2, 5)
+                          from z in Enumerable.Range(-2, 5)
+                          orderby x * x + z * z
+                          select point.right * (x * 0.75f) + point.forward * (z * 0.75f);
+            foreach (var offset in offsets)
             {
-                if (hit.collider.transform.IsChildOf(_ring) && Vector3.Dot(hit.normal, point.up) > 0.6f)
+                foreach (var hit in Physics.RaycastAll(point.position + offset + point.up * 0.5f,
+                             -point.up, 6f, ~0, QueryTriggerInteraction.Ignore).OrderBy(h => h.distance))
                 {
+                    if (!hit.collider.transform.IsChildOf(_ring) || !CanCollide(capsule, hit.collider)
+                        || Vector3.Dot(hit.normal, point.up) < 0.9f) continue;
+                    GetCapsuleAt(player, capsule, point.position, out var a, out var b, out var radius);
+                    var bottom = Mathf.Min(Vector3.Dot(a - point.position, point.up),
+                        Vector3.Dot(b - point.position, point.up)) - radius;
+                    var candidate = hit.point + point.up * (0.1f - bottom);
+                    GetCapsuleAt(player, capsule, candidate, out a, out b, out radius);
+                    if (Physics.OverlapCapsule(a, b, radius + 0.03f, ~0, QueryTriggerInteraction.Ignore)
+                        .Any(c => !c.transform.IsChildOf(player.transform) && CanCollide(capsule, c))) break;
                     floor = hit;
+                    position = candidate;
                     return true;
                 }
             }
             floor = default;
+            position = default;
             return false;
         }
+
+        private static bool CanCollide(Collider playerCollider, Collider other)
+            => !Physics.GetIgnoreLayerCollision(playerCollider.gameObject.layer, other.gameObject.layer)
+                && !Physics.GetIgnoreCollision(playerCollider, other);
+
+        private void GetCapsuleAt(OWRigidbody player, CapsuleCollider capsule, Vector3 position,
+            out Vector3 a, out Vector3 b, out float radius)
+        {
+            var scale = capsule.transform.lossyScale;
+            var axis = capsule.direction;
+            radius = capsule.radius * Mathf.Max(Mathf.Abs(scale[(axis + 1) % 3]), Mathf.Abs(scale[(axis + 2) % 3]));
+            var halfSegment = Mathf.Max(0, capsule.height * Mathf.Abs(scale[axis]) * 0.5f - radius);
+            var rotation = _spawn.transform.rotation * Quaternion.Inverse(player.transform.rotation);
+            var center = position + rotation * (capsule.transform.TransformPoint(capsule.center) - player.transform.position);
+            var localAxis = axis == 0 ? Vector3.right : axis == 1 ? Vector3.up : Vector3.forward;
+            var segment = rotation * capsule.transform.TransformDirection(localAxis) * halfSegment;
+            a = center + segment;
+            b = center - segment;
+        }
+
+        private float RelativeSpeed(OWRigidbody player)
+            => (player.GetVelocity() - _spawn._attachedBody.GetVelocity()
+                - _spawn._attachedBody.GetPointTangentialVelocity(player.GetPosition())).magnitude;
 
         private void RegisterVolumes(GameObject detector)
         {
@@ -206,6 +277,11 @@ namespace CustomReels
                 .Where(ContainsSpawnPoint)
                 .Concat(_sectorVolumes.Where(v => v != null)).Distinct().ToArray();
             _spawn._triggerVolumes = volumes;
+            foreach (var previous in _enteredVolumes.Where(v => v != null && !volumes.Contains(v)).ToArray())
+            {
+                if (previous.IsTrackingObject(detector)) previous.RemoveObjectFromVolume(detector);
+                _enteredVolumes.Remove(previous);
+            }
             foreach (var volume in volumes)
             {
                 if (volume.IsTrackingObject(detector)) continue;
@@ -295,6 +371,9 @@ namespace CustomReels
         {
             _preparing = false;
             _reportAt = 0;
+            _testingLanding = false;
+            _groundedSince = 0;
+            _nextFloorCheck = 0;
             ReleaseStreaming();
             _enteredVolumes.Clear();
             _spawn = null;
