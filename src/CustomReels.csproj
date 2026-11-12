@@ -2,6 +2,10 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <!-- GameLibs exposes private game members for compilation. Unity/Mono
+         also needs the skip-verification metadata emitted by /unsafe,
+         as in the official Outer Wilds mod template. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>CustomReels</AssemblyName>
     <OutputPath>../build/</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>

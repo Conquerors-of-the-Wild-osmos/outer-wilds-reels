@@ -6,6 +6,12 @@
       {
         "rename": "CustomReels_ProjectionHouse",
         "path": "RingWorld_Body/Sector_RingInterior/Sector_Zone1/Sector_ProjectionHouse_Zone1",
+        "removeChildren": [
+          "Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring/CustomReels_AspectRatioTest",
+          "Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring/CustomReels_Lantern",
+          "Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring/CustomReels_CinemaSignal",
+          "Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring/CustomReels_CinemaSpawn"
+        ],
         "position": {"x": 22.6074, "y": -56.0057, "z": 241.7911},
         "rotation": {"x": 0, "y": 180, "z": 0},
         "alignRadial": true,

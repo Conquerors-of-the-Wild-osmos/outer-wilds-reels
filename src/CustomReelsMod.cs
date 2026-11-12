@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using OWML.Common;
 using OWML.ModHelper;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace CustomReels
         // NH can schedule two successive 30-update spawn/velocity corrections.
         private const int SettleFrames = 90;
         private INewHorizons _nh;
+        private Harmony _harmony;
         private SpawnPoint _spawn;
         private Transform _ring;
         private StreamingGroup[] _groups = Array.Empty<StreamingGroup>();
@@ -38,6 +40,8 @@ namespace CustomReels
 
         private void Start()
         {
+            _harmony = new Harmony("usopshiy.CustomReels");
+            _harmony.PatchAll(typeof(SlideStreamingPatch).Assembly);
             _nh = ModHelper.Interaction.TryGetModApi<INewHorizons>("xen.NewHorizons");
             if (_nh == null)
             {
@@ -276,6 +280,7 @@ namespace CustomReels
 
         private void OnDestroy()
         {
+            _harmony?.UnpatchSelf();
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             _nh?.GetStarSystemLoadedEvent().RemoveListener(OnSystemLoaded);
             Cleanup();
