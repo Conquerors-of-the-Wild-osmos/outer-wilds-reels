@@ -57,72 +57,37 @@
         "sectorPath": "auto",
         "position": {"x": -1.3, "y": 0, "z": 0.8},
         "rotation": {"x": 15.0133, "y": 63.1091, "z": 13.3932},
-        "displaySlides": [0, 2, 4, 6, 8, 10, 12],
+        "displaySlides": [0, 2, 3, 5, 6, 8, 9],
         "slides": [
           {
-            "imagePath": "img/signalscope/slide-01.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-01.png"
           },
           {
-            "imagePath": "img/signalscope/slide-02.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-02.png"
           },
           {
-            "imagePath": "img/signalscope/slide-03.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-03.png"
           },
           {
-            "imagePath": "img/signalscope/slide-04.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-04.png"
           },
           {
-            "imagePath": "img/signalscope/slide-05.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-05.png"
           },
           {
-            "imagePath": "img/signalscope/slide-06.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-06.png"
           },
           {
-            "imagePath": "img/signalscope/slide-07.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-07.png"
           },
           {
-            "imagePath": "img/signalscope/slide-08.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-08.png"
           },
           {
-            "imagePath": "img/signalscope/slide-09.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-09.png"
           },
           {
-            "imagePath": "img/signalscope/slide-10.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
-          },
-          {
-            "imagePath": "img/signalscope/slide-11.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
-          },
-          {
-            "imagePath": "img/signalscope/slide-12.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
-          },
-          {
-            "imagePath": "img/signalscope/slide-13.png",
-            "backdropAudio": "audio.mp3",
-            "backdropFadeTime": 0.5
+            "imagePath": "img/signalscope/slide-10.png"
           }
         ]
       }
