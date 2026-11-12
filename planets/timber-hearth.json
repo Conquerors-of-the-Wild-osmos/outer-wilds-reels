@@ -6,7 +6,7 @@
       {
         "rename": "CustomReels_ProjectionHouse",
         "path": "RingWorld_Body/Sector_RingInterior/Sector_Zone1/Sector_ProjectionHouse_Zone1",
-        "position": {"x": 65, "y": -35, "z": 180},
+        "position": {"x": 22.6074, "y": -56.0057, "z": 241.7911},
         "rotation": {"x": 0, "y": 180, "z": 0},
         "alignRadial": true,
         "keepLoaded": true,
