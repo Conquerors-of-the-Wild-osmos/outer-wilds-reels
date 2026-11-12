@@ -1,0 +1,37 @@
+name: Build mod
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package OWML mod
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Validate and package mod
+        run: python scripts/package.py
+
+      - name: Upload installable ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: outer-wilds-reels-${{ github.run_number }}
+          path: dist/*.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

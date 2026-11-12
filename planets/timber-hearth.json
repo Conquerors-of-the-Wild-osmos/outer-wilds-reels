@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json",
+  "name": "Timber Hearth",
+  "Props": {
+    "details": [
+      {
+        "rename": "CustomReels_ProjectionHouse",
+        "path": "RingWorld_Body/Sector_RingInterior/Sector_Zone1/Sector_ProjectionHouse_Zone1",
+        "position": {"x": 65, "y": -35, "z": 180},
+        "rotation": {"x": 0, "y": 180, "z": 0},
+        "alignRadial": true,
+        "keepLoaded": true,
+        "ignoreSun": true
+      },
+      {
+        "rename": "CustomReels_Lantern",
+        "path": "RingWorld_Body/Sector_RingInterior/Sector_Zone3/Sector_HiddenGorge/Sector_DreamFireHouse_Zone3/Interactables_DreamFireHouse_Zone3/Lanterns_DFH_Zone3/Prefab_IP_SimpleLanternItem_Zone3DFH_5",
+        "parentPath": "Sector_TH/CustomReels_ProjectionHouse/Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring",
+        "isRelativeToParent": true,
+        "sectorPath": "auto",
+        "position": {"x": 1.3, "y": -0.8256, "z": 0.8},
+        "rotation": {"x": -4.484, "y": 173.1349, "z": -11.4379}
+      }
+    ],
+    "slideShows": [
+      {
+        "rename": "CustomReels_AspectRatioTest",
+        "type": "slideReel",
+        "reelModel": "whole",
+        "reelCondition": "pristine",
+        "parentPath": "Sector_TH/CustomReels_ProjectionHouse/Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring",
+        "isRelativeToParent": true,
+        "sectorPath": "auto",
+        "position": {"x": -1.3, "y": -1, "z": 0.8},
+        "rotation": {"x": 15.0133, "y": 63.1091, "z": 13.3932},
+        "displaySlides": [0, 1, 0, 1, 0, 1, 0],
+        "slides": [
+          {"imagePath": "img/1.jpg"},
+          {"imagePath": "img/2.jpg"}
+        ]
+      }
+    ]
+  }
+}
