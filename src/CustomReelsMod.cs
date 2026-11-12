@@ -42,6 +42,9 @@ namespace CustomReels
         private bool _floorFound;
         private bool _warped;
         private bool _testingLanding;
+        private PlayerCameraEffectController _wakeEffects;
+        private bool _wakeComplete;
+        private bool _waitingForWake;
         private float _groundedSince;
         private float _nextFloorCheck;
         private int _frames;
@@ -130,7 +133,7 @@ namespace CustomReels
                     // Some groups defer colliders until the wake-up animation finishes.
                     group.LoadRequiredColliders(100);
                 }
-                _started = Time.realtimeSinceStartup;
+                _started = Time.time;
                 _musicGuard.Begin(_ring, message => Log(message));
                 _preparing = true;
                 _frames = 0;
@@ -172,11 +175,51 @@ namespace CustomReels
                 var detector = Locator.GetPlayerDetector();
                 if (player == null || detector == null)
                 {
-                    if (Time.realtimeSinceStartup - _started > 30f)
+                    if (Time.time - _started > 30f)
                         Fallback("Player body/detector did not become available.");
                     return;
                 }
-                if (Time.realtimeSinceStartup - _started > 30f)
+                if (_wakeEffects == null)
+                    _wakeEffects = FindObjectOfType<PlayerCameraEffectController>();
+                if (_wakeEffects == null)
+                {
+                    PlacePlayer(player);
+                    RegisterVolumes(detector);
+                    if (Time.time - _started > 30f)
+                        Fallback("Wake-up controller did not become available.");
+                    return;
+                }
+                if (_wakeEffects._waitForWakeInput || _wakeEffects._isOpeningEyes || _wakeEffects._lastOpenness < 0.99f)
+                {
+                    // The first load can wait indefinitely for "Open eyes".
+                    // Rendered frames here do not mean that player physics is ready.
+                    if (!_waitingForWake)
+                        Log($"Waiting for wake-up: input={_wakeEffects._waitForWakeInput}, opening={_wakeEffects._isOpeningEyes}, openness={_wakeEffects._lastOpenness:F2}.");
+                    _waitingForWake = true;
+                    _wakeComplete = false;
+                    _testingLanding = false;
+                    _floorFound = false;
+                    _groundedSince = 0;
+                    _frames = 0;
+                    _nextFloorCheck = 0;
+                    _started = Time.time;
+                    PlacePlayer(player);
+                    RegisterVolumes(detector);
+                    LeaveVillageMusic(player);
+                    return;
+                }
+                // Pausing must neither expire the timeout nor satisfy settling or
+                // the continuous-ground-contact check without physics updates.
+                if (OWTime.IsPaused()) return;
+                if (!_wakeComplete)
+                {
+                    _wakeComplete = true;
+                    _waitingForWake = false;
+                    _started = Time.time;
+                    _frames = 0;
+                    Log("Wake-up complete: starting spawn settling and the 30s gameplay timeout.");
+                }
+                if (Time.time - _started > 30f)
                 {
                     Fallback($"Timed out: floorFound={_floorFound}, landing={_testingLanding}, volumes={_spawn._triggerVolumes.Length}.");
                     return;
@@ -199,10 +242,10 @@ namespace CustomReels
                         && ground != null && ground.transform.IsChildOf(_ring)
                         && RelativeSpeed(player) < 1f;
                     if (!stable) _groundedSince = 0;
-                    else if (_groundedSince == 0) _groundedSince = Time.realtimeSinceStartup;
-                    else if (Time.realtimeSinceStartup - _groundedSince >= 1f)
+                    else if (_groundedSince == 0) _groundedSince = Time.time;
+                    else if (Time.time - _groundedSince >= 1f)
                     {
-                        Log($"Cinema spawn ready: grounded=true, ground={ground.name}, volumes={_spawn._triggerVolumes.Length}, elapsed={Time.realtimeSinceStartup - _started:F2}s");
+                        Log($"Cinema spawn ready: grounded=true, ground={ground.name}, volumes={_spawn._triggerVolumes.Length}, elapsed={Time.time - _started:F2}s after wake-up");
                         LogAtmosphereState(player);
                         _preparing = false;
                         // Keep our streaming request until scene cleanup/fallback.
@@ -215,10 +258,10 @@ namespace CustomReels
                 LeaveVillageMusic(player);
                 RegisterVolumes(detector);
                 _frames++;
-                if (_frames >= SettleFrames && Time.realtimeSinceStartup >= _nextFloorCheck
+                if (_frames >= SettleFrames && Time.time >= _nextFloorCheck
                     && _groups.All(g => g == null || g.AreRequiredAssetsLoaded()))
                 {
-                    _nextFloorCheck = Time.realtimeSinceStartup + 0.5f;
+                    _nextFloorCheck = Time.time + 0.5f;
                     if (TryFindFloor(player, out var floor, out var position))
                     {
                         _spawn.transform.position = position;
@@ -477,6 +520,9 @@ namespace CustomReels
             _preparing = false;
             _reportAt = 0;
             _testingLanding = false;
+            _wakeEffects = null;
+            _wakeComplete = false;
+            _waitingForWake = false;
             _groundedSince = 0;
             _nextFloorCheck = 0;
             RemoveAtmosphereDetectors();
