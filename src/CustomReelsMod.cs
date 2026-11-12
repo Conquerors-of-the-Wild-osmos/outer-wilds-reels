@@ -27,6 +27,7 @@ namespace CustomReels
         private const float SpawnLeftOffsetMeters = 1.5f;
         private INewHorizons _nh;
         private Harmony _harmony;
+        private readonly TimberHearthMusicGuard _musicGuard = new TimberHearthMusicGuard();
         private SpawnPoint _spawn;
         private Transform _ring;
         private StreamingGroup[] _groups = Array.Empty<StreamingGroup>();
@@ -130,6 +131,7 @@ namespace CustomReels
                     group.LoadRequiredColliders(100);
                 }
                 _started = Time.realtimeSinceStartup;
+                _musicGuard.Begin(_ring, message => Log(message));
                 _preparing = true;
                 _frames = 0;
                 _floorFound = false;
@@ -144,6 +146,7 @@ namespace CustomReels
 
         private void LateUpdate()
         {
+            _musicGuard.Tick();
             if (!_preparing)
             {
                 if (_reportAt > 0 && Time.realtimeSinceStartup >= _reportAt)
@@ -430,6 +433,7 @@ namespace CustomReels
 
         private void Fallback(string reason)
         {
+            _musicGuard.Reset();
             _preparing = false;
             Log(reason + " Returning to the vanilla Timber Hearth spawn.", MessageType.Error);
             var detector = Locator.GetPlayerDetector();
@@ -469,6 +473,7 @@ namespace CustomReels
 
         private void Cleanup()
         {
+            _musicGuard.Reset();
             _preparing = false;
             _reportAt = 0;
             _testingLanding = false;
