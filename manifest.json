@@ -1,10 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/manifest_schema.json",
-  "filename": "NewHorizonsConfig.dll",
+  "filename": "CustomReels.dll",
   "author": "usopshiy",
   "name": "Custom Reels - Aspect Ratio Draft",
   "uniqueName": "usopshiy.CustomReels",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "owmlVersion": "2.15.1",
   "dependencies": ["xen.NewHorizons"]
 }

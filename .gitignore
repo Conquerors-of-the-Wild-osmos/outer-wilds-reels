@@ -5,3 +5,6 @@ SlideReelCache*/
 SlideReelsCache*/
 TextureCache*/
 __pycache__/
+build/
+src/obj/
+src/bin/

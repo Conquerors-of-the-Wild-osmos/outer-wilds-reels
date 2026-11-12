@@ -1,4 +1,4 @@
-NewHorizonsConfig.dll and New Horizons example placement configuration
+New Horizons example placement configuration
 Copyright (c) 2022 New Horizons Team
 
 MIT License

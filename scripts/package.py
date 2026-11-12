@@ -1,6 +1,7 @@
 """Check the draft's local assets and create an installable OWML ZIP.
 
-Run with Python 3. No third-party dependencies or image conversion required.
+Build src/CustomReels.csproj first, then run with Python 3.
+No third-party Python dependencies or image conversion required.
 """
 
 import json
@@ -39,11 +40,22 @@ def main():
         "README.md", "THIRD_PARTY_LICENSES.txt",
     ]
     files.extend(slide["imagePath"] for slide in reels[0]["slides"])
+    for slide in reels[0]["slides"]:
+        for field in ("beatAudio", "backdropAudio"):
+            audio = slide.get(field, "")
+            extension = Path(audio).suffix
+            if extension.lower() in (".wav", ".ogg", ".mp3"):
+                if extension != extension.lower():
+                    raise ValueError(f"Audio extensions must be lowercase for New Horizons: {audio}")
+                files.append(audio)
+    files = list(dict.fromkeys(files))
+    sources = {name: ROOT / name for name in files}
+    sources[manifest["filename"]] = ROOT / "build" / manifest["filename"]
     for name in files:
-        path = (ROOT / name).resolve()
+        path = sources[name].resolve()
         if ROOT not in path.parents or not path.is_file():
             raise ValueError(f"Missing or invalid package file: {name}")
-    if (ROOT / manifest["filename"]).read_bytes()[:2] != b"MZ":
+    if sources[manifest["filename"]].read_bytes()[:2] != b"MZ":
         raise ValueError("The loader DLL is missing or is not a PE binary")
 
     third_image = (ROOT / reels[0]["slides"][2]["imagePath"]).read_bytes()
@@ -58,12 +70,12 @@ def main():
     archive = destination / f'{manifest["uniqueName"]}-{manifest["version"]}.zip'
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as package:
         for name in files:
-            package.write(ROOT / name, f'{manifest["uniqueName"]}/{name}')
+            package.write(sources[name], f'{manifest["uniqueName"]}/{name}')
     with ZipFile(archive) as package:
         if package.testzip() is not None:
             raise ValueError("ZIP integrity check failed")
         for name in files:
-            if package.read(f'{manifest["uniqueName"]}/{name}') != (ROOT / name).read_bytes():
+            if package.read(f'{manifest["uniqueName"]}/{name}') != sources[name].read_bytes():
                 raise ValueError(f"Packaged content mismatch: {name}")
     print(f"Packaged {len(files)} files: {archive}")
     print("Two test locations with matching slides; third PNG is 1024x1024. In-game validation is still required.")
