@@ -31,6 +31,7 @@ namespace CustomReels
         private OWTriggerVolume[] _candidateVolumes = Array.Empty<OWTriggerVolume>();
         private OWTriggerVolume[] _sectorVolumes = Array.Empty<OWTriggerVolume>();
         private readonly HashSet<OWTriggerVolume> _enteredVolumes = new HashSet<OWTriggerVolume>();
+        private readonly HashSet<Shape> _unsupportedPointChecks = new HashSet<Shape>();
         private bool _preparing;
         private bool _floorFound;
         private bool _warped;
@@ -197,8 +198,7 @@ namespace CustomReels
             // NH initializes custom SpawnPoints with no trigger volumes. Entering
             // the containing volumes enables sectors, collision and atmosphere.
             var volumes = _candidateVolumes
-                .Where(v => v != null && v.isActiveAndEnabled && v.GetShape() != null
-                    && v.GetPenetrationDistance(_spawn.transform.position) > 0f)
+                .Where(ContainsSpawnPoint)
                 .Concat(_sectorVolumes.Where(v => v != null)).Distinct().ToArray();
             _spawn._triggerVolumes = volumes;
             foreach (var volume in volumes)
@@ -206,6 +206,28 @@ namespace CustomReels
                 if (volume.IsTrackingObject(detector)) continue;
                 volume.AddObjectToVolume(detector);
                 _enteredVolumes.Add(volume);
+            }
+        }
+
+        private bool ContainsSpawnPoint(OWTriggerVolume volume)
+        {
+            if (volume == null || !volume.isActiveAndEnabled) return false;
+            var shape = volume.GetShape();
+            if (shape == null || _unsupportedPointChecks.Contains(shape)) return false;
+            try
+            {
+                // We need membership, not penetration depth. CylinderShape's
+                // PenetrationDistance throws NotImplementedException in game.
+                return shape.PointInside(_spawn.transform.position);
+            }
+            catch (NotImplementedException)
+            {
+                // An unsupported optional shape must not abort the whole spawn.
+                // Sector volumes are added separately; other volumes can still
+                // detect entry through the game's normal collision handling.
+                _unsupportedPointChecks.Add(shape);
+                Log($"Point containment unavailable: {shape.GetType().Name} ({volume.name}); leaving entry to the game.", MessageType.Warning);
+                return false;
             }
         }
 
@@ -271,6 +293,7 @@ namespace CustomReels
             ReleaseStreaming();
             _enteredVolumes.Clear();
             _spawn = null;
+            _unsupportedPointChecks.Clear();
             _ring = null;
             _candidateVolumes = Array.Empty<OWTriggerVolume>();
             _sectorVolumes = Array.Empty<OWTriggerVolume>();
