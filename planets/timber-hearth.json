@@ -22,6 +22,21 @@
         "rotation": {"x": -4.484, "y": 173.1349, "z": -11.4379}
       }
     ],
+    "signals": [
+      {
+        "rename": "CustomReels_CinemaSignal",
+        "name": "Custom Reels Cinema",
+        "frequency": "Traveler",
+        "audio": "OW_NM_WhiteHoleAmbienceL",
+        "parentPath": "Sector_TH/CustomReels_ProjectionHouse/Interactables_ProjectionHouse_Zone1/TheatreRoom_ProjectionHouse_Zone1/Prefab_IP_SlideProjector_Ring",
+        "isRelativeToParent": true,
+        "position": {"x": 0, "y": 0, "z": 0},
+        "sourceRadius": 1,
+        "detectionRadius": 1000,
+        "identificationRadius": 1000,
+        "onlyAudibleToScope": true
+      }
+    ],
     "slideShows": [
       {
         "rename": "CustomReels_AspectRatioTest",
